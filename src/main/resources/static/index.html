@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Return Intelligence</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body { margin:0; font-family:Segoe UI; display:flex; background:#eef2f7; }
+        .sidebar { width:220px; background:#1e293b; color:white; padding:20px; }
+        .sidebar h2 { color:#f59e0b; }
+
+        .main { flex:1; }
+
+        .header { background:white; padding:15px; display:flex; justify-content:space-between; }
+
+        .stats { display:flex; gap:20px; padding:20px; }
+
+        .card {
+            background:white;
+            padding:20px;
+            border-radius:10px;
+            width:200px;
+            text-align:center;
+        }
+
+        .container { display:flex; gap:20px; padding:20px; }
+
+        .form-card {
+            background:white;
+            padding:20px;
+            border-radius:10px;
+            width:300px;
+        }
+
+        input, button { width:100%; padding:10px; margin:5px 0; }
+        button { background:#f59e0b; color:white; border:none; }
+
+        .chart { flex:1; background:white; padding:20px; border-radius:10px; }
+    </style>
+
+</head>
+
+<body>
+
+<div class="sidebar">
+    <h2>Seller Panel</h2>
+</div>
+
+<div class="main">
+
+    <div class="header">
+        <h3>Return Intelligence Dashboard</h3>
+    </div>
+
+    <div class="stats">
+        <div class="card"><h4>Total Returns</h4><h2 id="totalReturns">0</h2></div>
+        <div class="card"><h4>Total Loss</h4><h2 id="totalLoss">0</h2></div>
+        <div class="card"><h4>Top Product</h4><h2 id="topProduct">-</h2></div>
+        <div class="card"><h4>Top Issue</h4><h2 id="topReason">-</h2></div>
+    </div>
+
+    <div class="container">
+
+        <div class="form-card">
+
+            <h3>Add Return</h3>
+
+            <input id="orderId" placeholder="Order ID">
+            <input id="product" placeholder="Product">
+            <input id="original" placeholder="Original Price">
+            <input id="current" placeholder="Current Price">
+            <input id="reason" placeholder="Reason (Defect / Size / Late)">
+
+            <button onclick="submitData()">Submit</button>
+
+            <div id="output"></div>
+            <img id="qr" width="200">
+
+        </div>
+
+        <div class="chart">
+            <canvas id="chart"></canvas>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+
+    function submitData(){
+        fetch("/api/add",{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({
+                orderId:orderId.value,
+                product:product.value,
+                originalPrice:+original.value,
+                currentPrice:+current.value,
+                salePrice:0,
+                reason:reason.value
+            })
+        })
+            .then(res=>res.json())
+            .then(data=>{
+                output.innerText="Profit ₹"+data.profit+" | "+data.status;
+                qr.src="data:image/png;base64,"+data.qrCode;
+
+                loadStats();
+                loadChart();
+            });
+    }
+
+    function loadStats(){
+        fetch("/api/stats")
+            .then(res=>res.json())
+            .then(data=>{
+                totalReturns.innerText=data.totalReturns;
+                totalLoss.innerText="₹"+data.totalLoss;
+                topProduct.innerText=data.topProduct;
+                topReason.innerText=data.topReason;
+            });
+    }
+
+    let chart;
+
+    function loadChart(){
+        fetch("/api/all")
+            .then(res=>res.json())
+            .then(data=>{
+                let map={};
+                data.forEach(r=> map[r.product]=(map[r.product]||0)+1);
+
+                if(chart) chart.destroy();
+
+                chart=new Chart(document.getElementById("chart"),{
+                    type:"bar",
+                    data:{
+                        labels:Object.keys(map),
+                        datasets:[{label:"Returns",data:Object.values(map)}]
+                    }
+                });
+            });
+    }
+
+    window.onload=()=>{
+        loadStats();
+        loadChart();
+    }
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,10 @@
+POST http://localhost:8080/api/add
+Content-Type: application/json
+
+{
+  "orderId": "ORD100",
+  "originalPrice": 1000,
+  "currentPrice": 1200,
+  "salePrice": 1100,
+  "product": "Shoes"
+}
