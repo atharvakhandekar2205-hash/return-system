@@ -2,9 +2,10 @@ POST https://return-system-1.onrender.com/api/add
 Content-Type: application/json
 
 {
-  "orderId": "ORD100",
+  "orderId": "ORD200",
   "originalPrice": 1000,
   "currentPrice": 1200,
   "salePrice": 1100,
-  "product": "Shoes"
+  "product": "Shoes",
+  "reason": "Damaged"
 }
