@@ -16,16 +16,25 @@ public class ReturnController {
     @Autowired
     private ReturnService returnService;
 
+    // ✅ Home API (IMPORTANT FIX)
+    @GetMapping("/")
+    public String home() {
+        return "Return System API Running 🚀";
+    }
+
+    // Add return (POST)
     @PostMapping("/add")
     public Return add(@RequestBody Return r) {
         return returnService.processReturn(r);
     }
 
+    // Get all returns
     @GetMapping("/all")
     public List<Return> getAll() {
         return returnService.getAll();
     }
 
+    // Stats API
     @GetMapping("/stats")
     public Map<String, Object> stats() {
         return returnService.getStats();

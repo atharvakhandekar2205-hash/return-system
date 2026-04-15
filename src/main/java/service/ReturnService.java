@@ -13,27 +13,33 @@ public class ReturnService {
     @Autowired
     private ReturnRepository repository;
 
-    @Autowired
+    @Autowired(required = false)
     private QrService qrService;
 
     public Return processReturn(Return r) {
 
-        double profit = r.getCurrentPrice() - r.getOriginalPrice();
+        double original = r.getOriginalPrice() != null ? r.getOriginalPrice() : 0;
+        double current = r.getCurrentPrice() != null ? r.getCurrentPrice() : 0;
+
+        double profit = current - original;
         r.setProfit(profit);
 
-        double percent = (profit / r.getOriginalPrice()) * 100;
-        r.setProfitPercent(percent);
+        r.setProfitPercent(original != 0 ? (profit / original) * 100 : 0);
 
-        if (profit < 0) {
-            r.setStatus("LOSS ❌");
-        } else {
-            r.setStatus("OK ✅");
+        if (profit < 0) r.setStatus("LOSS ❌");
+        else if (profit > 0) r.setStatus("PROFIT ✅");
+        else r.setStatus("NO CHANGE");
+
+        try {
+            if (qrService != null) {
+                String qrData = "Order: " + r.getOrderId() + " | Profit: " + profit;
+                r.setQrCode(qrService.generateQR(qrData));
+            } else {
+                r.setQrCode("QR_DISABLED");
+            }
+        } catch (Exception e) {
+            r.setQrCode("QR_ERROR");
         }
-
-        // QR Data
-        String qrData = "Order: " + r.getOrderId() + " | Profit: " + profit;
-        String qrBase64 = qrService.generateQR(qrData);
-        r.setQrCode(qrBase64);
 
         return repository.save(r);
     }
@@ -42,7 +48,6 @@ public class ReturnService {
         return repository.findAll();
     }
 
-    // 🔥 BUSINESS ANALYTICS
     public Map<String, Object> getStats() {
 
         List<Return> list = repository.findAll();
@@ -53,46 +58,22 @@ public class ReturnService {
 
         for (Return r : list) {
 
-            if (r.getProfit() < 0) {
+            if (r.getProfit() != null && r.getProfit() < 0) {
                 totalLoss += Math.abs(r.getProfit());
             }
 
-            productMap.put(
-                    r.getProduct(),
-                    productMap.getOrDefault(r.getProduct(), 0) + 1
-            );
+            String product = r.getProduct() != null ? r.getProduct() : "Unknown";
+            productMap.put(product, productMap.getOrDefault(product, 0) + 1);
 
-            reasonMap.put(
-                    r.getReason(),
-                    reasonMap.getOrDefault(r.getReason(), 0) + 1
-            );
-        }
-
-        String topProduct = "";
-        int max = 0;
-
-        for (String key : productMap.keySet()) {
-            if (productMap.get(key) > max) {
-                max = productMap.get(key);
-                topProduct = key;
-            }
-        }
-
-        String topReason = "";
-        int maxReason = 0;
-
-        for (String key : reasonMap.keySet()) {
-            if (reasonMap.get(key) > maxReason) {
-                maxReason = reasonMap.get(key);
-                topReason = key;
-            }
+            String reason = r.getReason() != null ? r.getReason() : "Unknown";
+            reasonMap.put(reason, reasonMap.getOrDefault(reason, 0) + 1);
         }
 
         Map<String, Object> result = new HashMap<>();
         result.put("totalReturns", list.size());
         result.put("totalLoss", totalLoss);
-        result.put("topProduct", topProduct);
-        result.put("topReason", topReason);
+        result.put("topProduct", Collections.max(productMap.entrySet(), Map.Entry.comparingByValue()).getKey());
+        result.put("topReason", Collections.max(reasonMap.entrySet(), Map.Entry.comparingByValue()).getKey());
 
         return result;
     }

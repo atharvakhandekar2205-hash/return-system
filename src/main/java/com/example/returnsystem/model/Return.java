@@ -3,7 +3,7 @@ package com.example.returnsystem.model;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "returns")
+@Table(name = "return_data") // ✅ safer name
 public class Return {
 
     @Id
@@ -22,14 +22,12 @@ public class Return {
 
     private String status;
 
-    private String reason; // 🔥 NEW (important for business use)
+    private String reason;
 
     @Lob
-    @Column(name = "qr_code", columnDefinition = "LONGTEXT")
-    private String qrCode;
+    private String qrCode; // ✅ FIXED (removed LONGTEXT)
 
-    // ===== Getters & Setters =====
-
+    // getters & setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
