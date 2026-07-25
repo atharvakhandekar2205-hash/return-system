@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <style>
+    body {
+      font-family: Arial;
+      display: flex;
+      margin: 0;
+      background: #f8fafc;
+    }
+
+    .sidebar {
+      width: 220px;
+      background: #1e293b;
+      color: white;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .main {
+      flex: 1;
+      padding: 20px;
+    }
+
+    .card {
+      background: white;
+      padding: 15px;
+      margin: 12px 0;
+      border-radius: 10px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.08);
+    }
+
+    button {
+      padding: 10px 15px;
+      border: none;
+      background: #f59e0b;
+      color: white;
+      cursor: pointer;
+      border-radius: 6px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+
+    table, th, td {
+      border: 1px solid #d1d5db;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+
+    #reader {
+      width: 350px;
+    }
+
+    #scanResult {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    .logout-form {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="sidebar">
+  <h2>Seller Panel</h2>
+  <p>Logged in</p>
+
+  <form class="logout-form" method="post" action="/logout">
+    <button type="submit">Logout</button>
+  </form>
+</div>
+
+<div class="main">
+  <h2>Return Dashboard</h2>
+
+  <div class="card">
+    <h3>QR Code Scanner</h3>
+    <div id="reader"></div>
+    <p id="scanResult">Scan a QR code</p>
+  </div>
+
+  <div class="card">
+    <button onclick="downloadPDF()">Download PDF</button>
+  </div>
+
+  <div class="card">
+    <h3>Return Records</h3>
+    <table>
+      <thead>
+      <tr>
+        <th>Return ID</th>
+        <th>Order ID</th>
+        <th>Product</th>
+        <th>Reason</th>
+        <th>Profit</th>
+        <th>Status</th>
+      </tr>
+      </thead>
+      <tbody id="returnTableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <canvas id="chart"></canvas>
+  </div>
+</div>
+
+<script>
+  function downloadPDF() {
+    window.open("/api/report");
+  }
+
+  async function loadTable() {
+    try {
+      const res = await fetch("/api/all");
+      const data = await res.json();
+
+      const body = document.getElementById("returnTableBody");
+      body.innerHTML = "";
+
+      data.forEach(r => {
+        body.innerHTML += `
+          <tr>
+            <td>${r.returnId || ""}</td>
+            <td>${r.orderId || ""}</td>
+            <td>${r.product || ""}</td>
+            <td>${r.reason || ""}</td>
+            <td>${r.profit || 0}</td>
+            <td>${r.status || ""}</td>
+          </tr>
+        `;
+      });
+
+      loadChart(data);
+    } catch (error) {
+      console.error("Error loading table:", error);
+    }
+  }
+
+  let chart;
+  function loadChart(data) {
+    let map = {};
+    data.forEach(r => {
+      const product = r.product || "Unknown";
+      map[product] = (map[product] || 0) + 1;
+    });
+
+    if (chart) chart.destroy();
+
+    chart = new Chart(document.getElementById("chart"), {
+      type: "bar",
+      data: {
+        labels: Object.keys(map),
+        datasets: [{
+          label: "Returns",
+          data: Object.values(map)
+        }]
+      }
+    });
+  }
+
+  async function sendScannedDataToBackend(decodedText) {
+    try {
+      let qrData;
+
+      try {
+        qrData = JSON.parse(decodedText);
+      } catch (e) {
+        qrData = {
+          returnId: "RET-" + Date.now(),
+          orderId: "UNKNOWN_ORDER",
+          product: decodedText,
+          reason: "Scanned from plain text QR",
+          sellerEmail: "admin@gmail.com",
+          originalPrice: "0",
+          currentPrice: "0",
+          salePrice: "0"
+        };
+      }
+
+      if (!qrData.product || qrData.product.trim() === "") {
+        qrData.product = "UNKNOWN_PRODUCT";
+      }
+
+      if (!qrData.returnId || qrData.returnId.trim() === "") {
+        qrData.returnId = "RET-" + Date.now();
+      }
+
+      if (!qrData.orderId || qrData.orderId.trim() === "") {
+        qrData.orderId = "UNKNOWN_ORDER";
+      }
+
+      if (!qrData.reason || qrData.reason.trim() === "") {
+        qrData.reason = "No reason provided";
+      }
+
+      if (!qrData.sellerEmail || qrData.sellerEmail.trim() === "") {
+        qrData.sellerEmail = "admin@gmail.com";
+      }
+
+      qrData.originalPrice = qrData.originalPrice || "0";
+      qrData.currentPrice = qrData.currentPrice || "0";
+      qrData.salePrice = qrData.salePrice || "0";
+
+      const response = await fetch("/api/qr/save-scanned", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(qrData)
+      });
+
+      const saved = await response.json();
+
+      document.getElementById("scanResult").innerText =
+              "Saved return for product: " + (saved.product || "UNKNOWN_PRODUCT");
+
+      loadTable();
+    } catch (error) {
+      document.getElementById("scanResult").innerText = "Error saving scanned QR data";
+      console.error(error);
+    }
+  }
+
+  function onScanSuccess(decodedText, decodedResult) {
+    document.getElementById("scanResult").innerText = "Scanned: " + decodedText;
+    sendScannedDataToBackend(decodedText);
+  }
+
+  const html5QrCode = new Html5Qrcode("reader");
+  Html5Qrcode.getCameras().then(devices => {
+    if (devices && devices.length) {
+      html5QrCode.start(
+              devices[0].id,
+              { fps: 10, qrbox: 250 },
+              onScanSuccess
+      );
+    } else {
+      document.getElementById("scanResult").innerText = "No camera found";
+    }
+  }).catch(err => {
+    document.getElementById("scanResult").innerText = "Camera error: " + err;
+  });
+
+  loadTable();
+</script>
+
+</body>
+</html>

@@ -1,14 +1,18 @@
 package com.example.returnsystem.model;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "return_data") // ✅ safer name
+@Table(name = "return_data")
 public class Return {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    // ✅ NEW FIELD (for QR-based returns)
+    private String returnId;
 
     private String orderId;
     private String product;
@@ -21,15 +25,27 @@ public class Return {
     private Double profitPercent;
 
     private String status;
-
     private String reason;
 
-    @Lob
-    private String qrCode; // ✅ FIXED (removed LONGTEXT)
+    private String sellerEmail;
 
-    // getters & setters
+    private LocalDateTime createdAt;
+
+    @Lob
+    private String qrCode;
+
+    @PrePersist
+    public void setDate() {
+        this.createdAt = LocalDateTime.now();
+    }
+
+    // ===== GETTERS & SETTERS =====
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public String getReturnId() { return returnId; }
+    public void setReturnId(String returnId) { this.returnId = returnId; }
 
     public String getOrderId() { return orderId; }
     public void setOrderId(String orderId) { this.orderId = orderId; }
@@ -60,4 +76,9 @@ public class Return {
 
     public String getQrCode() { return qrCode; }
     public void setQrCode(String qrCode) { this.qrCode = qrCode; }
+
+    public String getSellerEmail() { return sellerEmail; }
+    public void setSellerEmail(String sellerEmail) { this.sellerEmail = sellerEmail; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
 }

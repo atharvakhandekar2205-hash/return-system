@@ -2,10 +2,12 @@ POST https://return-system-1.onrender.com/api/add
 Content-Type: application/json
 
 {
-  "orderId": "ORD200",
-  "originalPrice": 1000,
-  "currentPrice": 1200,
-  "salePrice": 1100,
+  "returnId": "RET101",
+  "orderId": "ORD501",
   "product": "Shoes",
-  "reason": "Damaged"
+  "reason": "Size issue",
+  "sellerEmail": "admin@gmail.com",
+  "originalPrice": "1000",
+  "currentPrice": "850",
+  "salePrice": "900"
 }

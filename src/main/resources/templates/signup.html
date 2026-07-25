@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <title>Sign Up</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #eef2f7;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .box {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      width: 320px;
+      text-align: center;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+    }
+    button {
+      background: #2563eb;
+      border: none;
+      color: white;
+      cursor: pointer;
+    }
+    .msg {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+<div class="box">
+  <h2>Sign Up</h2>
+
+  <p th:if="${error}" th:text="${error}" class="msg"></p>
+
+  <form method="post" action="/do-register">
+    <input type="email" name="email" placeholder="Enter email" required>
+    <input type="password" name="password" placeholder="Enter password" required>
+    <button type="submit">Create Account</button>
+  </form>
+
+  <p><a href="/login">Back to Login</a></p>
+</div>
+</body>
+</html>
